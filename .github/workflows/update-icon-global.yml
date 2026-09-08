@@ -1,9 +1,9 @@
-name: Mise Ã  jour ICON-GLOBAL 13 km
+name: Mise à jour ICON-GLOBAL 13 km
 on:
   workflow_dispatch:
     inputs:
       force:
-        description: Reconstruire mÃªme si ce calcul est dÃ©jÃ  publiÃ©
+        description: Reconstruire même si ce calcul est déjà publié
         type: boolean
         default: false
   schedule:
@@ -25,13 +25,13 @@ jobs:
           cache: pip
       - name: Installer les outils GRIB
         run: python -m pip install -r requirements.txt
-      - name: VÃ©rifier le module WordPress
+      - name: Vérifier le module WordPress
         run: |
           php -l wordpress/icon-global-13-km/icon-global-13-km.php
           node --check wordpress/icon-global-13-km/assets/arome-meteo.js
-      - name: VÃ©rifier les calculs mÃ©tÃ©o
+      - name: Vérifier les calculs météo
         run: python -m unittest discover -s tests -p 'test_*.py' -v
-      - name: Construire les prÃ©visions MÃ©tÃ©o-France ICON-GLOBAL
+      - name: Construire les prévisions DWD ICON-GLOBAL
         env:
           FORCE: ${{ inputs.force }}
           REPOSITORY: ${{ github.repository }}
@@ -39,12 +39,12 @@ jobs:
           args=()
           if [ "$FORCE" = 'true' ]; then args+=(--force); fi
           python scripts/update_icon_global.py --repository "$REPOSITORY" "${args[@]}"
-      - name: VÃ©rifier la publication nationale
+      - name: Vérifier la publication nationale
         id: validate
         run: |
           if [ ! -f build/national/index.json ]; then
             echo 'publish=false' >> "$GITHUB_OUTPUT"
-            echo 'Le dernier calcul complet est dÃ©jÃ  publiÃ©.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Le dernier calcul complet est déjà publié.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           python - <<'PY'
@@ -78,10 +78,10 @@ jobs:
           git -C "$publish_dir" config user.name 'github-actions[bot]'
           git -C "$publish_dir" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git -C "$publish_dir" add --all
-          git -C "$publish_dir" commit -m "PrÃ©visions ICON-GLOBAL $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git -C "$publish_dir" commit -m "Prévisions ICON-GLOBAL $(date -u +'%Y-%m-%d %H:%M UTC')"
           git -C "$publish_dir" push origin HEAD:data
-          echo "PrÃ©visions publiÃ©es dans https://github.com/$REPOSITORY/tree/data" >> "$GITHUB_STEP_SUMMARY"
-      - name: PrÃ©parer le ZIP WordPress
+          echo "Prévisions publiées dans https://github.com/$REPOSITORY/tree/data" >> "$GITHUB_STEP_SUMMARY"
+      - name: Préparer le ZIP WordPress
         run: |
           mkdir -p build/zip
           cd wordpress

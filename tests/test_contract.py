@@ -21,6 +21,23 @@ class ContractTests(unittest.TestCase):
   np.testing.assert_array_equal(out['vmax_10m'][1:,0],[4,10,10,10])
   raw['tot_prec'][2]=0
   with self.assertRaises(ValueError):m.hourly(raw,[0,0,1],steps)
+ def test_native_gust_gaps_remain_null(self):
+  raw={'t_2m':np.array([[270.],[271.],[277.]]),'vmax_10m':np.array([[0.],[4.],[10.]])}
+  out,periods=m.hourly(raw,[0,0,3],[0,1,4])
+  self.assertEqual(periods,[None,1,None,None,1])
+  self.assertTrue(np.isnan(out['vmax_10m'][2:4]).all())
+ def test_department_local_ids(self):
+  path=ROOT/'config/communes-france.json'
+  communes=json.loads(path.read_text(encoding='utf-8-sig'))['communes']
+  lat=np.array([c[5] for c in communes]);lon=np.array([c[6] for c in communes])
+  catalog=m.make_catalog(path,lat,lon)
+  self.assertEqual(len(catalog.departments),96)
+  for d in catalog.departments.values():
+   for c in d.communes:
+    point=d.points[c[6]]
+    self.assertAlmostEqual(point[1],c[4],places=4)
+    self.assertAlmostEqual(point[2],c[5],places=4)
+   self.assertEqual(len(d.points),len(set(c[6] for c in d.communes)))
  def test_transform_and_nulls(self):
   vals={'t_2m':273.15,'td_2m':271.15,'relhum_2m':90,'u_10m':3,'v_10m':4,'vmax_10m':10,'tot_prec':5,'snow_gsp':2,'snow_con':1,'cape_ml':600,'clct':20,'clcl':10,'clcm':0,'clch':0,'ps':100000,'pmsl':101300}
   raw={k:np.array([v]) for k,v in vals.items()}
