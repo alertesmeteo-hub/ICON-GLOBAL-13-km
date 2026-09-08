@@ -1,0 +1,53 @@
+{
+  "schema_version": 3,
+  "points": [
+    "model_index",
+    "latitude",
+    "longitude",
+    "altitude_m"
+  ],
+  "communes": [
+    "code_insee",
+    "name",
+    "postal_codes",
+    "population",
+    "latitude",
+    "longitude",
+    "point_id"
+  ],
+  "values": [
+    "temperature_c",
+    "humidity_pct",
+    "precipitation_mm",
+    "cloud_cover_pct",
+    "wind_speed_kmh",
+    "wind_direction_deg",
+    "wind_gust_kmh",
+    "pressure_hpa",
+    "visibility_km",
+    "condition_code",
+    "pressure_surface_hpa",
+    "dewpoint_c",
+    "precipitation_total_mm",
+    "cloud_low_pct",
+    "cloud_mid_pct",
+    "cloud_high_pct",
+    "cape_jkg",
+    "reflectivity_dbz",
+    "graupel_mm",
+    "thunder_risk_code",
+    "lcl_m",
+    "lightning_score",
+    "hail_risk_code",
+    "convective_precipitation_mm",
+    "storm_type_code",
+    "snow_risk_code",
+    "snowfall_mm",
+    "snow_fresh_cm",
+    "snow_depth_cm",
+    "snow_water_equivalent_mm",
+    "snow_stick_risk_code",
+    "snow_phase_code",
+    "snowfall_total_mm"
+  ]
+}

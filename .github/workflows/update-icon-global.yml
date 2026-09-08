@@ -1,0 +1,94 @@
+name: Mise Ã  jour ICON-GLOBAL 13 km
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Reconstruire mÃªme si ce calcul est dÃ©jÃ  publiÃ©
+        type: boolean
+        default: false
+  schedule:
+    - cron: '27 * * * *'
+permissions:
+  contents: write
+concurrency:
+  group: update-icon-global-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Installer les outils GRIB
+        run: python -m pip install -r requirements.txt
+      - name: VÃ©rifier le module WordPress
+        run: |
+          php -l wordpress/icon-global-13-km/icon-global-13-km.php
+          node --check wordpress/icon-global-13-km/assets/arome-meteo.js
+      - name: VÃ©rifier les calculs mÃ©tÃ©o
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Construire les prÃ©visions MÃ©tÃ©o-France ICON-GLOBAL
+        env:
+          FORCE: ${{ inputs.force }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          args=()
+          if [ "$FORCE" = 'true' ]; then args+=(--force); fi
+          python scripts/update_icon_global.py --repository "$REPOSITORY" "${args[@]}"
+      - name: VÃ©rifier la publication nationale
+        id: validate
+        run: |
+          if [ ! -f build/national/index.json ]; then
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+            echo 'Le dernier calcul complet est dÃ©jÃ  publiÃ©.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          from update_icon_global import validate_product
+          validate_product(Path('build/national'))
+          PY
+          echo 'publish=true' >> "$GITHUB_OUTPUT"
+      - name: Publier la branche data
+        if: steps.validate.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          source_dir="$PWD/build/national"
+          publish_dir="$(mktemp -d)"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -C "$publish_dir" init -b data
+          git -C "$publish_dir" remote add origin "https://github.com/$REPOSITORY.git"
+          if git ls-remote --exit-code --heads "https://github.com/$REPOSITORY.git" data >/dev/null; then
+            git -C "$publish_dir" fetch --depth=1 origin data
+            git -C "$publish_dir" reset --hard FETCH_HEAD
+            git -C "$publish_dir" rm -r --ignore-unmatch .
+          fi
+          cp -a "$source_dir/." "$publish_dir/"
+          touch "$publish_dir/.nojekyll"
+          git -C "$publish_dir" config user.name 'github-actions[bot]'
+          git -C "$publish_dir" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$publish_dir" add --all
+          git -C "$publish_dir" commit -m "PrÃ©visions ICON-GLOBAL $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git -C "$publish_dir" push origin HEAD:data
+          echo "PrÃ©visions publiÃ©es dans https://github.com/$REPOSITORY/tree/data" >> "$GITHUB_STEP_SUMMARY"
+      - name: PrÃ©parer le ZIP WordPress
+        run: |
+          mkdir -p build/zip
+          cd wordpress
+          zip -qr ../build/zip/icon-global-13-km-wordpress.zip icon-global-13-km
+      - uses: actions/upload-artifact@v4
+        with:
+          name: icon-global-13-km-wordpress
+          path: build/zip/icon-global-13-km-wordpress.zip
+          if-no-files-found: error
+
