@@ -10,3 +10,5 @@ Instruction utilisateur du 8 septembre 2026 : toujours livrer les nouveaux modul
 - Ne pas livrer uniquement une application React nécessitant un terminal local.
 
 - Format de données demandé : JSON départemental v3 partagé avec AROME, liste de communes et point_id local, points, puis tableaux de 33 valeurs par point pour chaque échéance. Préserver les noms et l’ordre des colonnes ; champs absents à null.
+
+- Emplacement permanent des ZIP WordPress demandé par l’utilisateur : `C:\Users\franc\Documents\ChatGPT\Wordpress`. Y déposer chaque nouvelle version de ZIP WordPress et donner le lien vers ce fichier. Ne pas y mettre les archives React ou de projet complet.
