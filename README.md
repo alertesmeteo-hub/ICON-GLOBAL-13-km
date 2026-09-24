@@ -10,7 +10,7 @@ Le dernier calcul complet à +180 h parmi les cycles 00, 06, 12 et 18 UTC est s�
 
 ## WordPress / Avada
 
-Télécharger le ZIP WordPress dans [Releases](https://github.com/alertesmeteo-hub/ICON-GLOBAL-13-km/releases). Dans WordPress : **Extensions → Ajouter → Téléverser → Activer**. Placer ce shortcode dans un bloc texte Avada :
+Télécharger le ZIP WordPress dans [Releases](https://github.com/alertesmeteo-hub/ICON-GLOBAL-13-km/releases). Dans WordPress : **Extensions → Ajouter → Téléverser → Activer**. Le module v2 produit 50 cartes France/Europe et 50 grilles de valeurs interactives. Placer ce shortcode dans un bloc texte Avada :
 
 ```text
 [icon_global_meteo]

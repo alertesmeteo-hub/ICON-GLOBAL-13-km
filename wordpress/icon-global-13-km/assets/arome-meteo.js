@@ -989,7 +989,7 @@
                 setActiveView(button.dataset.icongTab || 'general');
             });
         });
-        app.dataset.activeView = 'general';
+        app.dataset.activeView = 'map-fixed';
 
         function putMessage(body, message, error, colspan) {
             if (!body) { return; }
@@ -1471,7 +1471,7 @@
             if (altitudeLine) {
                 altitudeLine.textContent = finite(altitude)
                     ? 'Altitude de ' + cityName + ' : ≈ ' + formatNumber(altitude, 0) + ' m (point de grille ICON-GLOBAL)'
-                    : 'Altitude de ' + cityName + ' : — (relancez le workflow GitHub ICON-GLOBAL v1.0.0)';
+                    : 'Altitude de ' + cityName + ' : — (relancez le workflow GitHub ICON-GLOBAL v2.0.0)';
                 altitudeLine.classList.toggle('icong-altitude-missing', !finite(altitude));
             }
             selectedMapFocus = {

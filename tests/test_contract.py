@@ -4,8 +4,13 @@ import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 import update_icon_global as m
+from icon_global_maps import MAP_STEPS, PRODUCTS, REGIONS
 
 class ContractTests(unittest.TestCase):
+ def test_map_contract(self):
+  self.assertEqual(MAP_STEPS,(24,48,72,120,180))
+  self.assertEqual(set(PRODUCTS),{'temperature','precipitation','rafales','nuages','vent'})
+  self.assertEqual(set(REGIONS),{'france','europe'})
  def test_exact_arome_columns(self):
   ref=json.loads((ROOT/'tests/reference-schema.json').read_text())
   self.assertEqual(list(m.schema.VALUE_COLUMNS),ref['values'])

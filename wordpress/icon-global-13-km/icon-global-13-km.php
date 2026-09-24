@@ -3,7 +3,7 @@
  * Plugin Name: ICON-GLOBAL DWD France — Prévisions communales
  * Plugin URI: https://github.com/alertesmeteo-hub/ICON-GLOBAL-13-km
  * Description: Prévisions communales horaires ICON-GLOBAL de DWD pour la France métropolitaine et la Corse.
- * Version: 1.0.0
+ * Version: 2.0.0
  * Author: Alertes Météo Hub
  * Requires at least: 5.8
  * Requires PHP: 7.4
@@ -14,8 +14,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('ICONG_VERSION', '1.0.0');
-define('ICONG_RELEASE_DATE', '08/09/2026');
+define('ICONG_VERSION', '2.0.0');
+define('ICONG_RELEASE_DATE', '24/09/2026');
 define('ICONG_OPTION_BASE_URL', 'icong_national_data_base_url');
 define(
     'ICONG_DEFAULT_BASE_URL',
@@ -56,6 +56,13 @@ function icong_register_assets() {
     wp_register_script(
         'icong-table',
         plugin_dir_url(__FILE__) . 'assets/arome-meteo.js',
+        array(),
+        ICONG_VERSION,
+        true
+    );
+    wp_register_script(
+        'icong-maps',
+        plugin_dir_url(__FILE__) . 'assets/icon-global-maps.js',
         array(),
         ICONG_VERSION,
         true
@@ -190,6 +197,7 @@ function icong_render_shortcode($atts) {
 
     wp_enqueue_style('icong-table');
     wp_enqueue_script('icong-table');
+    wp_enqueue_script('icong-maps');
 
     ob_start();
     ?>
@@ -207,7 +215,7 @@ function icong_render_shortcode($atts) {
     >
         <header class="icong-header">
             <div>
-                <p class="icong-kicker">MODÈLE HAUTE RÉSOLUTION • FRANCE MÉTROPOLITAINE</p>
+                <p class="icong-kicker">MODÈLE GLOBAL DWD • FRANCE ET EUROPE</p>
                 <h2 data-icong-title><?php echo esc_html($title_prefix . ' — ' . $city_name); ?></h2>
                 <p class="icong-city-altitude" data-icong-altitude>Altitude de <?php echo esc_html($city_name); ?> : chargement…</p>
                 <p class="icong-meta" data-icong-meta>Chargement du dernier run ICON-GLOBAL…</p>
@@ -261,30 +269,53 @@ function icong_render_shortcode($atts) {
 
         <p>Au-delà de +78 h : valeurs horaires interpolées, pluie et neige réparties sur trois heures ; rafales affichées uniquement aux heures couvertes par les données sources.</p>
         <div class="icong-tabs" role="tablist" aria-label="Type de prévision ICON-GLOBAL">
+            <button type="button" class="icong-tab icong-tab-map is-active" role="tab" aria-selected="true" data-icong-tab="map-fixed">Europe/France</button>
+            <button type="button" class="icong-tab icong-tab-map" role="tab" aria-selected="false" data-icong-tab="map-france">France Zoom interactif</button>
+            <button type="button" class="icong-tab icong-tab-map" role="tab" aria-selected="false" data-icong-tab="map-europe">Europe Zoom interactif</button>
+            <span class="icong-table-label">TABLEAU :</span>
             <button
                 type="button"
-                class="icong-tab is-active"
+                class="icong-tab"
                 role="tab"
-                aria-selected="true"
+                aria-selected="false"
                 data-icong-tab="general"
-            >🌤️ Prévisions générales</button>
+            >🌤️ Général</button>
             <button
                 type="button"
                 class="icong-tab icong-tab-storm"
                 role="tab"
                 aria-selected="false"
                 data-icong-tab="storms"
-            >⛈️ Prévisions orages</button>
+            >⛈️ Orages</button>
             <button
                 type="button"
                 class="icong-tab icong-tab-snow"
                 role="tab"
                 aria-selected="false"
                 data-icong-tab="snow"
-            >❄️ Risque de neige</button>
+            >❄️ Neige</button>
         </div>
 
-        <div class="icong-panel" data-icong-panel="general">
+        <?php foreach (array('map-fixed' => array('france', '1'), 'map-france' => array('france', '0'), 'map-europe' => array('europe', '0')) as $map_view => $map_config) : ?>
+        <section class="icong-panel icong-map-panel" data-icong-panel="<?php echo esc_attr($map_view); ?>" <?php if ($map_view !== 'map-fixed') : ?>hidden<?php endif; ?>>
+            <div class="icong-map-widget" data-icong-map data-region="<?php echo esc_attr($map_config[0]); ?>" data-fixed="<?php echo esc_attr($map_config[1]); ?>">
+                <div class="icong-map-tools">
+                    <div class="icong-map-products" aria-label="Paramètre météo"></div>
+                    <?php if ($map_config[1] === '1') : ?><div class="icong-map-regions"><button type="button" data-region="france" aria-pressed="true">France</button><button type="button" data-region="europe" aria-pressed="false">Europe</button></div><?php endif; ?>
+                    <div class="icong-map-leads" aria-label="Échéance"></div>
+                </div>
+                <p class="icong-map-summary"></p>
+                <div class="icong-map-viewer">
+                    <img class="icong-map-image" alt="Carte ICON-GLOBAL 13 km">
+                    <div class="icong-map-probe" hidden><strong></strong><span></span></div>
+                    <?php if ($map_config[1] === '0') : ?><div class="icong-map-zoom"><button type="button" data-zoom="in">+</button><button type="button" data-zoom="out">−</button><button type="button" data-zoom="reset">⌂</button></div><?php endif; ?>
+                    <p class="icong-map-status" role="status">Chargement de la carte…</p>
+                </div>
+            </div>
+        </section>
+        <?php endforeach; ?>
+
+        <div class="icong-panel" data-icong-panel="general" hidden>
             <div class="icong-table-wrap icong-general-wrap" role="region" aria-label="Prévisions horaires générales" tabindex="0">
                 <table class="icong-table">
                     <thead>
@@ -406,10 +437,10 @@ function icong_render_shortcode($atts) {
             <span data-icong-generated>Mise à jour en cours de lecture…</span>
             <span>
                 Données météo directes :
-                <a href="https://www.data.gouv.fr/datasets/paquets-arome-resolution-0-01deg" target="_blank" rel="noopener noreferrer">ICON-GLOBAL 13 km — DWD</a>
+                <a href="https://opendata.dwd.de/weather/nwp/icon/grib/" target="_blank" rel="noopener noreferrer">ICON-GLOBAL 13 km — DWD Open Data</a>
                 • Recherche des communes :
                 <a href="https://geo.api.gouv.fr/decoupage-administratif/communes" target="_blank" rel="noopener noreferrer">API officielle française</a>
-                • <a href="https://www.alertes-meteo.com/" target="_blank" rel="noopener noreferrer">www.alertes-meteo.com</a>
+                • <strong class="icong-brand">www.alertes-meteo.com</strong>
             </span>
             <span class="icong-plugin-version">Module ICON-GLOBAL v<?php echo esc_html(ICONG_VERSION); ?> (<?php echo esc_html(ICONG_RELEASE_DATE); ?>)</span>
         </footer>

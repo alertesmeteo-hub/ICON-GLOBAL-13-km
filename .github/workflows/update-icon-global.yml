@@ -1,5 +1,12 @@
 name: Mise à jour ICON-GLOBAL 13 km
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'config/**'
+      - 'requirements.txt'
+      - '.github/workflows/update-icon-global.yml'
   workflow_dispatch:
     inputs:
       force:
@@ -53,6 +60,11 @@ jobs:
           sys.path.insert(0, 'scripts')
           from update_icon_global import validate_product
           validate_product(Path('build/national'))
+          import json
+          maps=json.loads((Path('build/national')/'maps'/'manifest.json').read_text())
+          assert maps['pipeline_version']=='2.0.0'
+          assert len(list((Path('build/national')/'maps').glob('*/*.png')))==50
+          assert len(list((Path('build/national')/'maps').glob('*/*-values.json')))==50
           PY
           echo 'publish=true' >> "$GITHUB_OUTPUT"
       - name: Publier la branche data
