@@ -103,7 +103,8 @@ def generate_maps(listings, run, output_dir, download, decode, grids, config_dir
                         payload_key = (variable, step)
                         if payload_key not in payload_cache:
                             payload_cache[payload_key] = download(listings[variable][run, step])
-                        cache[key] = decode(payload_cache[payload_key], run, step, variable, grid["indices"])[0]
+                        cache[key] = decode(payload_cache[payload_key], run, step, variable,
+                                            grid["indices"].astype(int).tolist())[0]
                     fields.append(cache[key])
                 values = np.hypot(fields[0], fields[1]) * 3.6 if product == "vent" else fields[0]
                 if product == "temperature": values = values - 273.15
