@@ -24,6 +24,7 @@
         var productKey = 'precipitation', lead = 180, manifest = null, item = null, grid = null;
         var scale = 1, translateX = 0, translateY = 0, dragging = false, dragStart = null, probeSequence = 0;
         var image = widget.querySelector('.icong-map-image');
+        var vectorZoom = new window.IconVectorZoom(image);
         var status = widget.querySelector('.icong-map-status');
         var summary = widget.querySelector('.icong-map-summary');
         var probe = widget.querySelector('.icong-map-probe');
@@ -32,7 +33,7 @@
         var regions = widget.querySelector('.icong-map-regions');
         function hideProbe() { probe.hidden = true; }
         function transform() {
-            image.style.transform = 'translate(' + translateX + 'px,' + translateY + 'px) scale(' + scale + ')';
+            vectorZoom.transform(scale, translateX, translateY);
             image.style.cursor = fixed ? 'default' : (dragging ? 'grabbing' : 'grab');
         }
         function reset() { scale = 1; translateX = 0; translateY = 0; transform(); hideProbe(); }
@@ -53,7 +54,7 @@
             status.textContent = 'Chargement de la carte…';
             summary.textContent = product.label + ' · ' + (region === 'france' ? 'France' : 'Europe') + ' · H+' + lead;
             image.alt = 'Carte ICON-GLOBAL ' + product.label + ', ' + region + ', H+' + lead;
-            image.src = base + item.image;
+            vectorZoom.load(item.vector ? base + item.vector : null, item.plot_box, !fixed, base + item.image);
             reset(); loadGrid(item);
             products.querySelectorAll('button').forEach(function (button) { button.setAttribute('aria-pressed', String(button.dataset.product === productKey)); });
             leads.querySelectorAll('button').forEach(function (button) { button.setAttribute('aria-pressed', String(Number(button.dataset.lead) === lead)); });
@@ -74,10 +75,9 @@
         function showProbe(event) {
             if (fixed || dragging || !grid || !item) { hideProbe(); return; }
             var rect = image.getBoundingClientRect(), viewer = image.parentElement.getBoundingClientRect();
-            var box = item.plot_box || [0, 0, 1, 1];
-            var x = ((event.clientX - rect.left) / rect.width - box[0]) / box[2];
-            var y = ((event.clientY - rect.top) / rect.height - box[1]) / box[3];
-            if (x < 0 || x > 1 || y < 0 || y > 1) { hideProbe(); return; }
+            var point = vectorZoom.point(event, item.plot_box);
+            if (!point) { hideProbe(); return; }
+            var x = point[0], y = point[1];
             var bounds = grid.bounds, lon = bounds[0] + x * (bounds[1] - bounds[0]);
             var lat = bounds[3] - y * (bounds[3] - bounds[2]);
             var value = grid.values[nearest(grid.lats, lat)][nearest(grid.lons, lon)];
@@ -94,6 +94,7 @@
         }
         image.addEventListener('load', function () { status.textContent = ''; });
         image.addEventListener('error', function () { status.textContent = 'Carte temporairement indisponible.'; });
+        image.addEventListener('vector-unavailable', function () { status.textContent = 'Rendu vectoriel indisponible : carte fixe conservée.'; });
         image.addEventListener('pointerdown', function (event) {
             if (fixed || scale === 1) { return; } dragging = true;
             dragStart = [event.clientX - translateX, event.clientY - translateY]; image.setPointerCapture(event.pointerId); transform();
@@ -103,6 +104,7 @@
             else { showProbe(event); }
         });
         image.addEventListener('pointerup', function (event) { dragging = false; transform(); showProbe(event); });
+        image.addEventListener('pointercancel', function () { dragging = false; transform(); hideProbe(); });
         image.addEventListener('pointerleave', hideProbe);
         image.addEventListener('wheel', function (event) {
             if (fixed) { return; } event.preventDefault(); scale = Math.max(1, Math.min(5, scale + (event.deltaY < 0 ? .2 : -.2))); transform();

@@ -36,6 +36,8 @@ jobs:
         run: |
           php -l wordpress/icon-global-13-km/icon-global-13-km.php
           node --check wordpress/icon-global-13-km/assets/arome-meteo.js
+          node --check wordpress/icon-global-13-km/assets/icon-global-maps.js
+          node --check wordpress/icon-global-13-km/assets/icon-vector-zoom.js
       - name: Vérifier les calculs météo
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Construire les prévisions DWD ICON-GLOBAL
@@ -62,7 +64,8 @@ jobs:
           validate_product(Path('build/national'))
           import json
           maps=json.loads((Path('build/national')/'maps'/'manifest.json').read_text())
-          assert maps['pipeline_version']=='2.0.0'
+          assert maps['pipeline_version']=='2.1.0'
+          assert len(list((Path('build/national')/'maps').glob('*/*.svg')))==50
           assert len(list((Path('build/national')/'maps').glob('*/*.png')))==50
           assert len(list((Path('build/national')/'maps').glob('*/*-values.json')))==50
           PY

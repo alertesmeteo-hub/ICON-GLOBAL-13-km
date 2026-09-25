@@ -10,8 +10,8 @@ from scipy.spatial import cKDTree
 
 
 REGIONS = {
-    "france": (-6.0, 10.5, 41.0, 52.0, 0.18),
-    "europe": (-25.0, 45.0, 30.0, 72.0, 0.32),
+    "france": (-6.0, 10.5, 41.0, 52.0, 0.1),
+    "europe": (-25.0, 45.0, 30.0, 72.0, 0.1),
 }
 MAP_STEPS = (24, 48, 72, 120, 180)
 PRODUCTS = {
@@ -55,6 +55,9 @@ def _draw_boundaries(ax, config_dir):
     for name, width in (("ne_50m_coastline", .58), ("ne_50m_admin_0_boundary_lines_land", .42)):
         reader = shapefile.Reader(str(Path(config_dir) / "natural-earth" / name))
         for shape in reader.shapes():
+            west, east = ax.get_xlim(); south, north = ax.get_ylim()
+            if shape.bbox[2] < west or shape.bbox[0] > east or shape.bbox[3] < south or shape.bbox[1] > north:
+                continue
             points = np.asarray(shape.points)
             parts = list(shape.parts) + [len(points)]
             for start, end in zip(parts, parts[1:]):
@@ -65,13 +68,20 @@ def _render(grid, values, product, region, run, step, destination, config_dir):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.colors import BoundaryNorm
+    from matplotlib.colors import BoundaryNorm, ListedColormap
     spec = PRODUCTS[product]
     west, east, south, north, _ = REGIONS[region]
     fig, ax = plt.subplots(figsize=(12, 8.2), dpi=150)
-    norm = BoundaryNorm(spec["levels"], plt.get_cmap(spec["cmap"]).N, clip=True)
-    mesh = ax.pcolormesh(grid["lons"], grid["lats"], values, shading="auto",
-                         cmap=spec["cmap"], norm=norm, rasterized=True)
+    cmap = plt.get_cmap(spec["cmap"]).copy()
+    if product == "precipitation":
+        cmap = ListedColormap(['#dcecf9', '#b6daf3', '#80b9ec', '#438bdf', '#16bfc7',
+                               '#35cb75', '#8bdc32', '#e9ee28', '#ffcd27', '#ff8b22',
+                               '#f4432c', '#c92368', '#ad19bf']).with_extremes(under='#f4f8fc', over='#751499')
+    norm = BoundaryNorm(spec["levels"], cmap.N)
+    # Linear isobands are display interpolation only; probes retain source values.
+    mesh = ax.contourf(grid["lons"], grid["lats"], values, levels=spec["levels"],
+                       cmap=cmap, norm=norm, extend="both", antialiased=False)
+    ax.set(xlim=(west, east), ylim=(south, north))
     _draw_boundaries(ax, config_dir)
     ax.set(xlim=(west, east), ylim=(south, north)); ax.set_xticks([]); ax.set_yticks([])
     ax.set_aspect(1.0 / np.cos(np.deg2rad((south + north) / 2.0)))
@@ -80,14 +90,19 @@ def _render(grid, values, product, region, run, step, destination, config_dir):
                  fontsize=12, fontweight="bold")
     bar = fig.colorbar(mesh, ax=ax, orientation="vertical", pad=.015, fraction=.035)
     bar.set_label(spec["unit"], fontweight="bold")
-    ax.text(.5, .018, "www.alertes-meteo.com", transform=ax.transAxes, ha="center", va="bottom",
+    ax.set_anchor('C')
+    fig.text(.5, .06, "www.alertes-meteo.com", ha="center", va="bottom",
             fontsize=8, color="#f04444", fontweight="bold",
             bbox={"facecolor": "#111", "alpha": .94, "edgecolor": "none", "pad": 4})
     destination.parent.mkdir(parents=True, exist_ok=True)
     fig.canvas.draw(); position = ax.get_position()
     plot_box = [round(position.x0, 6), round(1 - position.y1, 6),
                 round(position.width, 6), round(position.height, 6)]
-    fig.savefig(destination, facecolor="white"); plt.close(fig)
+    fig.savefig(destination, facecolor="white")
+    # SVG stores weather isobands and geographic boundaries as paths, not pixels.
+    if bar.solids is not None: bar.solids.set_rasterized(False)
+    fig.savefig(destination.with_suffix(".svg"), facecolor="white")
+    plt.close(fig)
     return plot_box
 
 
@@ -119,8 +134,9 @@ def generate_maps(listings, run, output_dir, download, decode, grids, config_dir
                                  "values": np.round(values, 1).tolist()}
                 (output_dir / probe).write_text(json.dumps(probe_payload, separators=(",", ":")), encoding="utf-8")
                 manifests[product].append({"region": region, "lead_hour": step, "image": image,
+                                           "vector": image.replace(".png", ".svg"),
                                            "values": probe, "plot_box": plot_box})
-    payload = {"model": "ICON-GLOBAL", "pipeline_version": "2.0.0", "resolution_km": 13,
+    payload = {"model": "ICON-GLOBAL", "pipeline_version": "2.1.0", "resolution_km": 13,
                "run": run, "steps": list(MAP_STEPS),
                "products": {key: {"label": value["label"], "unit": value["unit"], "maps": manifests[key]}
                             for key, value in PRODUCTS.items()}}

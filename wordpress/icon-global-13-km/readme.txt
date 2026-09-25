@@ -2,10 +2,16 @@
 Contributors: alertesmeteo-hub
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 2.1.0
 License: GPLv2 or later
 
 Prévisions communales ICON-GLOBAL 13 km de DWD.
+
+Version 2.1.0 : cartes vectorielles, zoom de la zone géographique uniquement,
+légende et titre fixes. Logo rouge sur fond noir, non cliquable.
+Grille cartographique de 0,1 degré issue des points natifs les plus proches.
+Le lissage des plages est graphique : la résolution du modèle reste 13 km.
+Nécessite une publication data 2.1.0. Sans SVG, conserve une carte fixe.
 
 == Installation ==
 Téléverser le ZIP dans Extensions, puis activer.

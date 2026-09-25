@@ -10,7 +10,7 @@ from scipy.spatial import cKDTree
 import schema_v3 as schema
 
 BASE='https://opendata.dwd.de/weather/nwp/icon/grib/'
-VERSION='2.0.0'
+VERSION='2.1.0'
 STEPS=list(range(79))+list(range(81,181,3))
 GRID_UUID='a27b8de618c411e4820ab5b098c6a5c0'
 GRID_SIZE=2949120

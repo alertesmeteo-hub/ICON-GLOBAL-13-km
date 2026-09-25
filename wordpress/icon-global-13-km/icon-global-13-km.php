@@ -3,7 +3,7 @@
  * Plugin Name: ICON-GLOBAL DWD France — Prévisions communales
  * Plugin URI: https://github.com/alertesmeteo-hub/ICON-GLOBAL-13-km
  * Description: Prévisions communales horaires ICON-GLOBAL de DWD pour la France métropolitaine et la Corse.
- * Version: 2.0.0
+ * Version: 2.1.0
  * Author: Alertes Météo Hub
  * Requires at least: 5.8
  * Requires PHP: 7.4
@@ -14,8 +14,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('ICONG_VERSION', '2.0.0');
-define('ICONG_RELEASE_DATE', '24/09/2026');
+define('ICONG_VERSION', '2.1.0');
+define('ICONG_RELEASE_DATE', '25/09/2026');
 define('ICONG_OPTION_BASE_URL', 'icong_national_data_base_url');
 define(
     'ICONG_DEFAULT_BASE_URL',
@@ -60,10 +60,11 @@ function icong_register_assets() {
         ICONG_VERSION,
         true
     );
+    wp_register_script('icong-vector', plugin_dir_url(__FILE__) . 'assets/icon-vector-zoom.js', array(), ICONG_VERSION, true);
     wp_register_script(
         'icong-maps',
         plugin_dir_url(__FILE__) . 'assets/icon-global-maps.js',
-        array(),
+        array('icong-vector'),
         ICONG_VERSION,
         true
     );
