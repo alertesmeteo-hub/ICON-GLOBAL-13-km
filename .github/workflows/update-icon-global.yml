@@ -119,9 +119,12 @@ jobs:
             fi
             cp -a "$source_dir/." "$publish_dir/"
             touch "$publish_dir/.nojekyll"
+            # Commit sans parent (branche orpheline) : la branche data ne garde qu'une seule publication,
+            # sinon l'historique grossit de plusieurs dizaines de Mo à chaque passage (dépôt à 3,2 Go en 2026-10).
+            git -C "$publish_dir" checkout -q --orphan "publication-$attempt"
             git -C "$publish_dir" add --all
             git -C "$publish_dir" commit -m "Prévisions ICON-GLOBAL $(date -u +'%Y-%m-%d %H:%M UTC')"
-            if git -C "$publish_dir" push origin HEAD:data; then
+            if git -C "$publish_dir" push --force origin HEAD:data; then
               echo "Prévisions publiées dans https://github.com/$REPOSITORY/tree/data" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
