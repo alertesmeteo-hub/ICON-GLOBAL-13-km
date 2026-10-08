@@ -23,7 +23,7 @@ from PIL import Image
 from scipy.spatial import cKDTree
 
 BOUNDS = {"south": 38.0, "west": -12.0, "north": 57.0, "east": 18.0}
-WIDTH = 600  # ~0,05° en longitude ; ICON est à ~0,12°, l'interpolation lisse le rendu
+WIDTH = 300  # 0,1° en longitude (ICON est à ~0,12°) : au-delà, les fichiers grossissent sans gain visible
 PROBE_MAGIC = b"CEV1"
 # Champs ICON nécessaires aux couches interactives (voir FIELDS dans update_icon_global.py).
 VARIABLES = ("t_2m", "relhum_2m", "u_10m", "v_10m", "vmax_10m", "tot_prec", "pmsl", "clct")
@@ -76,7 +76,7 @@ def _write_probe(values, minimum, maximum, destination: Path):
     encoded[valid] = np.rint((np.clip(values[valid], minimum, maximum) - minimum) / (maximum - minimum) * 65534.0).astype("<u2")
     destination.parent.mkdir(parents=True, exist_ok=True)
     header = struct.pack("<4sHHff", PROBE_MAGIC, encoded.shape[1], encoded.shape[0], float(minimum), float(maximum))
-    with destination.open("wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, compresslevel=6, mtime=0) as gz:
+    with destination.open("wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, compresslevel=9, mtime=0) as gz:
         gz.write(header)
         gz.write(encoded.tobytes(order="C"))
 
@@ -155,15 +155,16 @@ def write_interactive(raw, steps, run_date, output, grid, generated, config_dir)
         for key, values in fields.items():
             if values is None or key not in layers:
                 continue
-            minimum, maximum = bounds_of(key)
+            minimum, _ = bounds_of(key)
             q = QUANTUM.get(key, 0.1)
-            values = np.round(values / q) * q
-            _write_probe(values, minimum, maximum, out / "values" / key / f"{name}.hkv.gz")
+            # Plage = exactement 65534 pas de `q` : chaque code uint16 vaut un multiple de q, l'octet haut reste
+            # presque toujours nul et gzip divise la taille par 5 à 7 (mesuré sur un run réel).
+            _write_probe(np.round(values / q) * q, minimum, minimum + 65534.0 * q, out / "values" / key / f"{name}.hkv.gz")
             _write_image(values, layers[key], out / key / f"{name}.webp")
             files[key] = f"maps/{key}/{name}.webp"
             probes[key] = f"maps/values/{key}/{name}.hkv.gz"
         for key, values in (("vent_u", u), ("vent_v", v)):
-            _write_probe(np.round(values), VECTOR_RANGE[0], VECTOR_RANGE[1], out / "values" / key / f"{name}.hkv.gz")
+            _write_probe(np.round(values), VECTOR_RANGE[0], VECTOR_RANGE[0] + 65534.0, out / "values" / key / f"{name}.hkv.gz")
             probes[key] = f"maps/values/{key}/{name}.hkv.gz"
         entries.append({"lead_hour": int(lead), "valid_time": _iso(run_date + timedelta(hours=int(lead))), "files": files, "probes": probes})
     if not entries:
