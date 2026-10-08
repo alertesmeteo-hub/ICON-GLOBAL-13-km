@@ -10,7 +10,7 @@ from scipy.spatial import cKDTree
 import schema_v3 as schema
 
 BASE='https://opendata.dwd.de/weather/nwp/icon/grib/'
-VERSION='2.1.0'
+VERSION='2.2.0'
 STEPS=list(range(79))+list(range(81,181,3))
 GRID_UUID='a27b8de618c411e4820ab5b098c6a5c0'
 GRID_SIZE=2949120
@@ -194,17 +194,26 @@ def build(catalog_path,output,repository,force=False):
  lon,_=decode(download(listings['clon'][run,0]),run,0,'clon')
  catalog=make_catalog(catalog_path,lat,lon)
  from icon_global_maps import prepare_grids
- map_grids=prepare_grids(lat,lon);del lat,lon
+ map_grids=prepare_grids(lat,lon)
+ # Cartes interactives (format commun AROME/ARPEGE/GFS/ECMWF) : points natifs utiles et poids d'interpolation.
+ from icon_interactive_maps import prepare_interactive,write_interactive,VARIABLES as INTER_VARS
+ inter=prepare_interactive(lat,lon);inter_cand=inter['candidates'].tolist();del lat,lon
  altitude,_=decode(download(listings['hsurf'][run,0]),run,0,'hsurf',catalog.model_indexes)
  for d in catalog.departments.values():
   for p,g in zip(d.points,d.global_point_ids):p.append(schema.json_number(altitude[g],True))
  raw={v:np.full((len(STEPS),len(catalog.model_indexes)),np.nan) for v in VARIABLES};starts=[0]*len(STEPS)
- def fetch(v,i,s):return v,i,decode(download(listings[v][run,s]),run,s,v,catalog.model_indexes)
+ inter_raw={v:np.full((len(STEPS),len(inter_cand)),np.nan,dtype=np.float32) for v in INTER_VARS}
+ def fetch(v,i,s):
+  payload=download(listings[v][run,s]);result=decode(payload,run,s,v,catalog.model_indexes)
+  # même message GRIB décodé une seconde fois pour les points des cartes interactives
+  extra=decode(payload,run,s,v,inter_cand)[0] if v in INTER_VARS else None
+  return v,i,result,extra
  with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
   jobs=[pool.submit(fetch,v,i,s) for i,s in enumerate(STEPS) for v in VARIABLES if not (v=='vmax_10m' and s==0)]
   try:
    for n,job in enumerate(concurrent.futures.as_completed(jobs),1):
-    v,i,(values,start)=job.result();raw[v][i]=values
+    v,i,(values,start),extra=job.result();raw[v][i]=values
+    if extra is not None:inter_raw[v][i]=extra
     if v=='vmax_10m':starts[i]=start
     if n%100==0:print(f'Champs téléchargés et validés : {n}/{len(jobs)}',flush=True)
   except Exception:
@@ -224,7 +233,8 @@ def build(catalog_path,output,repository,force=False):
   department_index,total=schema.write_departments(output,temp,catalog,generated)
  from icon_global_maps import generate_maps
  generate_maps(listings,run,output,download,decode,map_grids,Path(__file__).resolve().parents[1]/'config')
- index={'schema_version':3,'status':'ok','generated_at':generated,'model':{'name':'ICON-GLOBAL 13 km','provider':'DWD','dataset':'ICON global native icosahedral','domain':'Monde (extraction France métropolitaine et Corse)','resolution_km':13,'grid_uuid':GRID_UUID,'forecast_hours_requested':180,'run_time':schema.iso_utc(run_date),'pipeline_version':VERSION,'catalog_version':catalog.version,'storm_diagnostics':True,'snow_diagnostics':True,'source_url':BASE,'license':'CC BY 4.0 — DWD'},'coverage':{'label':'France métropolitaine et Corse','communes':catalog.commune_count,'departments':96},'condition_codes':schema.CONDITION_CODES,'diagnostics':{'unavailable':UNAVAILABLE,'native_steps_hours':STEPS,'hourly_interpolated_after':78,'gust_period_hours':periods,'note':'Au-delà de +78 h, champs instantanés interpolés linéairement ; cumuls de pluie et neige répartis uniformément sur trois heures ; rafales uniquement sur les heures couvertes par leur intervalle GRIB ; les heures manquantes restent null. Risques orage et neige indicatifs, pas des vigilances officielles. snow_depth_cm suit le cumul estimé de neige fraîche sans fonte ni tassement, pas une hauteur observée au sol. null signifie indisponible.'},'search':{'provider':'API Découpage administratif','endpoint':'https://geo.api.gouv.fr/communes'},'maps':{'status':'ready','manifest':'maps/manifest.json','count':50},'departments':department_index,'total_department_bytes':total}
+ print('Cartes interactives :',write_interactive(inter_raw,STEPS,run_date,output,inter,generated,Path(__file__).resolve().parents[1]/'config'),'échéances',flush=True)
+ index={'schema_version':3,'status':'ok','generated_at':generated,'model':{'name':'ICON-GLOBAL 13 km','provider':'DWD','dataset':'ICON global native icosahedral','domain':'Monde (extraction France métropolitaine et Corse)','resolution_km':13,'grid_uuid':GRID_UUID,'forecast_hours_requested':180,'run_time':schema.iso_utc(run_date),'pipeline_version':VERSION,'catalog_version':catalog.version,'storm_diagnostics':True,'snow_diagnostics':True,'source_url':BASE,'license':'CC BY 4.0 — DWD'},'coverage':{'label':'France métropolitaine et Corse','communes':catalog.commune_count,'departments':96},'condition_codes':schema.CONDITION_CODES,'diagnostics':{'unavailable':UNAVAILABLE,'native_steps_hours':STEPS,'hourly_interpolated_after':78,'gust_period_hours':periods,'note':'Au-delà de +78 h, champs instantanés interpolés linéairement ; cumuls de pluie et neige répartis uniformément sur trois heures ; rafales uniquement sur les heures couvertes par leur intervalle GRIB ; les heures manquantes restent null. Risques orage et neige indicatifs, pas des vigilances officielles. snow_depth_cm suit le cumul estimé de neige fraîche sans fonte ni tassement, pas une hauteur observée au sol. null signifie indisponible.'},'search':{'provider':'API Découpage administratif','endpoint':'https://geo.api.gouv.fr/communes'},'maps':{'status':'ready','manifest':'maps/manifest.json','count':50,'interactive':'maps/index.json'},'departments':department_index,'total_department_bytes':total}
  (output/'index.json').write_text(json.dumps(index,ensure_ascii=False,separators=(',',':')),encoding='utf-8');validate_product(output)
 
 if __name__=='__main__':

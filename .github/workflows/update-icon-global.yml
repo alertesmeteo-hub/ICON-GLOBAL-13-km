@@ -80,6 +80,8 @@ jobs:
           assert len(list((Path('build/national')/'maps').glob('*/*.svg')))==50
           assert len(list((Path('build/national')/'maps').glob('*/*.png')))==50
           assert len(list((Path('build/national')/'maps').glob('*/*-values.json')))==50
+          inter=json.loads((Path('build/national')/'maps'/'index.json').read_text())
+          assert len(inter['steps'])>=100 and inter['steps'][0]['probes']['temperature']
           PY
           echo 'publish=true' >> "$GITHUB_OUTPUT"
       - name: Publier la branche data
